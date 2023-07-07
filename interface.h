@@ -14,7 +14,7 @@ class InterFace : public QMainWindow
 public:
     explicit InterFace(const QString& username, QWidget *parent = nullptr);
     ~InterFace();
-    QVariantList mylist;
+    QMap<QString, QVariant> interfaceInfoMap;
 
 private slots:
     void on_comboBox_currentIndexChanged(int index);

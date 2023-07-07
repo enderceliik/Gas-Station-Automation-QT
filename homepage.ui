@@ -21,12 +21,12 @@
        <widget class="QComboBox" name="comboBox">
         <item>
          <property name="text">
-          <string>Stations</string>
+          <string>stations</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Sales</string>
+          <string>sales</string>
          </property>
         </item>
        </widget>
@@ -51,13 +51,7 @@
      </layout>
     </item>
     <item row="1" column="0">
-     <widget class="QTableWidget" name="tableWidget">
-      <property name="editTriggers">
-       <set>QAbstractItemView::NoEditTriggers</set>
-      </property>
-      <property name="sortingEnabled">
-       <bool>true</bool>
-      </property>
+     <widget class="QTableView" name="tableView">
       <attribute name="verticalHeaderVisible">
        <bool>false</bool>
       </attribute>

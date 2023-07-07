@@ -4,6 +4,8 @@
 #include "database.h"
 #include <QtSql>
 #include "QString"
+#include <QSqlQueryModel>
+
 database::database()
 {
 
@@ -23,13 +25,14 @@ QString database::database_connection(QString username, QString password)
         query.bindValue(":username", username);
         if(query.exec())
         {
+            query.next();
             qDebug() << "Sorgu gerçekleştirildi";
         }
         else
         {
             qDebug() << query.lastError().text()  + " giriş hatası";
-        }
-        query.next();
+            return "Bağlanılamadı";
+        } 
         if(password == query.value(0).toString())
         {
             return query.value(1).toString();
@@ -42,75 +45,64 @@ QString database::database_connection(QString username, QString password)
 
 }
 
-QVariantList database::interface_constructor_fetch(QString username)
+QMap<QString, QVariant> database::interface_constructor_fetch(QString username)
 {
-    QVariantList mylist;
+    QMap <QString, QVariant> interfaceInfoMap;
     QSqlQuery query;
-    query.prepare("select adminID, stationID from users where username = :username");
+    query.prepare("select userID, stationID from users where username = :username");
     query.bindValue(":username", username);
     if(query.exec())
     {
+        query.next();
+        interfaceInfoMap.insert("userID", query.value(0).toInt());
+        interfaceInfoMap.insert("stationID", query.value(1).toInt());
         qDebug() << "Sorgu gerçekleştirildi";
     }
     else
     {
         qDebug() << query.lastError().text()  + " username sorgu hatası";
     }
-    query.next();
-    int adminID = query.value(0).toInt();
-    int stationID = query.value(1).toInt();
-    qDebug() << QString::number(stationID) + " STATION ";
-    mylist.append(adminID);
-    mylist.append(stationID);
     query.prepare("select stationName, pumpSize from stations where stationID = :stationID");
-    query.bindValue(":stationID",stationID);
+    query.bindValue(":stationID", interfaceInfoMap.value("stationID"));
     if(query.exec())
     {
+        query.next();
+        interfaceInfoMap.insert("stationName", query.value(0).toString());
+        interfaceInfoMap.insert("pumpSize", query.value(1).toInt());
         qDebug() << "Sorgu gerçekleştirildi";
     }
     else
     {
         qDebug() << query.lastError().text()  + " stationID sorgu hatası";
     }
-    query.next();
-    QString stationName = query.value(0).toString();
-    int pumpSize = query.value(1).toInt();
-    mylist.append(stationName);
-    mylist.append(pumpSize);
-
     query.prepare("select * from fuel_prices");
     if(query.exec())
     {
+        query.next();
+        interfaceInfoMap.insert("lpg", query.value(0).toDouble());
+        interfaceInfoMap.insert("diesel", query.value(1).toDouble());
+        interfaceInfoMap.insert("gasoline", query.value(2).toDouble());
         qDebug() << "Sorgu gerçekleştirildi";
     }
     else
     {
         qDebug() << query.lastError().text()  + " stationID sorgu hatası";
     }
-    query.next();
-    double lpg = query.value(0).toDouble();
-    double diesel = query.value(1).toDouble();
-    double gasoline = query.value(2).toDouble();
-    mylist.append(lpg);
-    mylist.append(diesel);
-    mylist.append(gasoline);
-    return mylist;
+    return interfaceInfoMap;
 }
 
-void database::process_completed_button_function(QString fuelType, double salePrice, double fuelSupplied, double feeReceived, int pumpNumber, int adminID, int stationID, QString stationName)
+void database::process_completed_button_function(QMap<QString,QVariant> saleDatabaseMap)
 {
-    qDebug() << QString::number(stationID) + " ------ ";
     QSqlQuery query;
-    query.prepare("insert into sales (stationName, feeReceived, fuelSupplied, pumpNumber, fuelType, salePrice, officerID, stationID) values (:stationName, :feeReceived, :fuelSupplied, :pumpNumber,:fuelType, :salePrice, :adminID, :stationID)");
-    query.bindValue(":stationName", stationName);
-    query.bindValue(":feeReceived", feeReceived);
-    query.bindValue(":fuelSupplied", fuelSupplied);
-    query.bindValue(":pumpNumber", pumpNumber);
-    query.bindValue(":fuelType", fuelType);
-    query.bindValue(":salePrice", salePrice);
-    query.bindValue(":stationID", stationID);
-    query.bindValue(":adminID", adminID);
-
+    query.prepare("insert into sales (stationName, feeReceived, fuelSupplied, pumpNumber, fuelType, salePrice, userID, stationID) values (:stationName, :feeReceived, :fuelSupplied, :pumpNumber,:fuelType, :salePrice, :userID, :stationID)");
+    query.bindValue(":stationName", saleDatabaseMap.value("stationName"));
+    query.bindValue(":feeReceived", saleDatabaseMap.value("feeReceived"));
+    query.bindValue(":fuelSupplied", saleDatabaseMap.value("fuelSupplied"));
+    query.bindValue(":pumpNumber", saleDatabaseMap.value("pumpNumber"));
+    query.bindValue(":fuelType", saleDatabaseMap.value("fuelType"));
+    query.bindValue(":salePrice", saleDatabaseMap.value("salePrice"));
+    query.bindValue(":stationID", saleDatabaseMap.value("stationID"));
+    query.bindValue(":userID", saleDatabaseMap.value("userID"));
     if(query.exec())
     {
         qDebug() << "insert stations table!";
@@ -121,8 +113,8 @@ void database::process_completed_button_function(QString fuelType, double salePr
     }
 
     query.prepare("update stations set totalSales = totalSales + :feeReceived where stationID = :stationID");
-    query.bindValue(":stationID", stationID);
-    query.bindValue(":feeReceived", feeReceived);
+    query.bindValue(":stationID", saleDatabaseMap.value("stationID"));
+    query.bindValue(":feeReceived", saleDatabaseMap.value("feeReceived"));
     if(query.exec())
     {
         qDebug() << "UPDATE stations table!";
@@ -131,12 +123,11 @@ void database::process_completed_button_function(QString fuelType, double salePr
     {
         qDebug() << query.lastError().text()  + "update totalSales error";
     }
-    qDebug() << fuelType;
-    if(fuelType == "LPG")
+    if(saleDatabaseMap.value("fuelType") == "LPG")
     {
         query.prepare("update stations set totalFuelSuppliedLPG = totalFuelSuppliedLPG + :fuelSupplied where stationID = :stationID");
     }
-    else if(fuelType == "Diesel")
+    else if(saleDatabaseMap.value("fuelType") == "Diesel")
     {
         query.prepare("update stations set totalFuelSuppliedDiesel = totalFuelSuppliedDiesel + :fuelSupplied where stationID = :stationID");
     }
@@ -145,8 +136,8 @@ void database::process_completed_button_function(QString fuelType, double salePr
         query.prepare("update stations set totalFuelSuppliedGasoline = totalFuelSuppliedGasoline + :fuelSupplied where stationID = :stationID");
 
     }
-    query.bindValue(":stationID", stationID);
-    query.bindValue(":fuelSupplied", fuelSupplied);
+    query.bindValue(":stationID", saleDatabaseMap.value("stationID"));
+    query.bindValue(":fuelSupplied", saleDatabaseMap.value("fuelSupplied"));
     if(query.exec())
     {
         qDebug() << "UPDATE stations table!";
@@ -157,6 +148,13 @@ void database::process_completed_button_function(QString fuelType, double salePr
     }
 }
 
+QSqlQueryModel* database::database_query(QString parameter)
+{
+    QString query = QString("SELECT * FROM '%1'").arg(parameter);
+    QSqlQueryModel *model  = new QSqlQueryModel();
+    model->setQuery(query);
+    return model;
+}
 void database::initial_database_definition()
 {
     QSqlDatabase database = QSqlDatabase::addDatabase("QSQLITE");
@@ -189,7 +187,7 @@ void database::initial_database_definition()
         }
         query.prepare(
             "create table users ("
-            "adminID INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "userID INTEGER PRIMARY KEY AUTOINCREMENT,"
             "username VARCHAR(50),"
             "password VARCHAR(16),"
             "userType INT,"
@@ -224,15 +222,15 @@ void database::initial_database_definition()
 
         query.prepare(
             "CREATE TABLE sales ("
-            "salesID INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "saleID INTEGER PRIMARY KEY AUTOINCREMENT,"
             "saleDate DATETIME DEFAULT CURRENT_TIMESTAMP,"
             "stationName VARCHAR(50),"
             "feeReceived DOUBLE,"
             "fuelSupplied DOUBLE,"
-            "pumpNumber INT," // dzlt
+            "pumpNumber INT,"
             "fuelType VARCHAR(3),"
             "salePrice DOUBLE,"
-            "officerID INT,"
+            "userID INT,"
             "stationID INT,"
             "FOREIGN KEY(stationID) REFERENCES stations(stationID)"
             ")");

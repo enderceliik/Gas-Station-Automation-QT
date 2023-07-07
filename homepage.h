@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QSqlQuery>
 #include <QSqlError>
+#include <QSqlQueryModel>
 namespace Ui {
 class HomePage;
 }

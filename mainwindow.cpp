@@ -62,21 +62,6 @@ void MainWindow::on_login_button_clicked()
             close();
             interface->show();
         }
-        else if (response == "database created")
-        {
-            QMessageBox msgBox;
-            msgBox.setWindowTitle("Bilgilendime");
-            msgBox.setIcon(QMessageBox::Warning);
-            msgBox.setText("Database created succesfully. Please Try login again!");
-            msgBox.setStandardButtons(QMessageBox::Ok);
-            msgBox.setDefaultButton(QMessageBox::Ok);
-            msgBox.exec();
-            ui->statusbar->clearMessage();
-            ui->username_line_edit->setEnabled(true);
-            ui->password_line_edit->setEnabled(true);
-            ui->login_button->setEnabled(true);
-            return;
-        }
         else
         {
             QMessageBox msgBox;
